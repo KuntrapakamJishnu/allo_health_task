@@ -1,0 +1,12 @@
+{
+  "env": {
+    "DATABASE_URL": "@database_url",
+    "CRON_SECRET": "@cron_secret"
+  },
+  "crons": [
+    {
+      "path": "/api/cron/release-expired",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}

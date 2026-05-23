@@ -1,65 +1,149 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { AlertCircle, Loader2 } from 'lucide-react';
+
+interface WarehouseStock {
+  warehouseId: string;
+  warehouseName: string;
+  warehouseCity: string;
+  totalUnits: number;
+  reservedUnits: number;
+  availableUnits: number;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  sku: string;
+  stock: WarehouseStock[];
+}
+
+export default function ProductsPage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch('/api/products');
+        if (!response.ok) throw new Error('Failed to fetch products');
+        const data = await response.json();
+        setProducts(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800">
+      <div className="container mx-auto px-4 py-12">
+        <div className="mb-12">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-2">
+            Inventory Store
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-slate-300 text-lg">
+            Browse available products and make reservations
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-900/20 border border-red-500/50 rounded-lg flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
+            <p className="text-red-200">{error}</p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {products.map((product) => (
+            <Card key={product.id} className="bg-slate-800/50 border-slate-700 hover:border-blue-500/50 transition-all hover:shadow-lg hover:shadow-blue-500/20">
+              <CardHeader>
+                <CardTitle className="text-blue-400">{product.name}</CardTitle>
+                <CardDescription className="text-slate-400">
+                  SKU: {product.sku}
+                </CardDescription>
+                {product.description && (
+                  <p className="text-sm text-slate-300 mt-2">{product.description}</p>
+                )}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-2xl font-bold text-green-400">
+                  ${product.price.toFixed(2)}
+                </div>
+
+                <div className="space-y-3">
+                  {product.stock.length === 0 ? (
+                    <p className="text-slate-400">No stock information available</p>
+                  ) : (
+                    product.stock.map((warehouse) => (
+                      <div
+                        key={warehouse.warehouseId}
+                        className="p-3 bg-slate-900/50 rounded-lg border border-slate-700"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <p className="font-medium text-slate-200">
+                              {warehouse.warehouseName}
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              {warehouse.warehouseCity}
+                            </p>
+                          </div>
+                          <Badge className="bg-blue-600 text-white">
+                            {warehouse.availableUnits} available
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          Total: {warehouse.totalUnits} | Reserved:{' '}
+                          {warehouse.reservedUnits}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {product.stock.some((w) => w.availableUnits > 0) ? (
+                  <Link href={`/checkout?productId=${product.id}`}>
+                    <Button className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold">
+                      Make Reservation
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button disabled className="w-full opacity-50 cursor-not-allowed">
+                    Out of Stock
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ))}
         </div>
-      </main>
+
+        {products.length === 0 && !error && (
+          <div className="text-center py-12">
+            <p className="text-slate-400">No products available</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
