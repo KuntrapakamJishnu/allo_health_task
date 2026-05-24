@@ -4,14 +4,14 @@ import { prisma } from '@/lib/prisma';
 // Mock data for development when database is not available
 const mockProducts = [
   {
-    id: 'cuid1001',
+    id: 'clp1000000000000000000001',
     name: 'Laptop Pro',
     description: 'High-performance laptop',
     price: 1299.99,
     sku: 'LAP-001',
     stock: [
       {
-        warehouseId: 'ware1',
+        warehouseId: 'clp0000000000000000000001',
         warehouseName: 'New York',
         warehouseCity: 'New York',
         totalUnits: 50,
@@ -19,7 +19,7 @@ const mockProducts = [
         availableUnits: 38,
       },
       {
-        warehouseId: 'ware2',
+        warehouseId: 'clp0000000000000000000002',
         warehouseName: 'Los Angeles',
         warehouseCity: 'Los Angeles',
         totalUnits: 30,
@@ -29,14 +29,14 @@ const mockProducts = [
     ],
   },
   {
-    id: 'cuid1002',
+    id: 'clp1000000000000000000002',
     name: 'Monitor 4K',
     description: 'Ultra HD display monitor',
     price: 599.99,
     sku: 'MON-001',
     stock: [
       {
-        warehouseId: 'ware1',
+        warehouseId: 'clp0000000000000000000001',
         warehouseName: 'New York',
         warehouseCity: 'New York',
         totalUnits: 100,
@@ -44,7 +44,7 @@ const mockProducts = [
         availableUnits: 80,
       },
       {
-        warehouseId: 'ware3',
+        warehouseId: 'clp0000000000000000000003',
         warehouseName: 'Chicago',
         warehouseCity: 'Chicago',
         totalUnits: 75,
@@ -54,14 +54,14 @@ const mockProducts = [
     ],
   },
   {
-    id: 'cuid1003',
+    id: 'clp1000000000000000000003',
     name: 'Mechanical Keyboard',
     description: 'RGB mechanical keyboard',
     price: 149.99,
     sku: 'KEY-001',
     stock: [
       {
-        warehouseId: 'ware2',
+        warehouseId: 'clp0000000000000000000002',
         warehouseName: 'Los Angeles',
         warehouseCity: 'Los Angeles',
         totalUnits: 200,
@@ -69,7 +69,7 @@ const mockProducts = [
         availableUnits: 150,
       },
       {
-        warehouseId: 'ware3',
+        warehouseId: 'clp0000000000000000000003',
         warehouseName: 'Chicago',
         warehouseCity: 'Chicago',
         totalUnits: 150,
@@ -79,14 +79,14 @@ const mockProducts = [
     ],
   },
   {
-    id: 'cuid1004',
+    id: 'clp1000000000000000000004',
     name: 'Wireless Mouse',
     description: 'Precision wireless mouse',
     price: 49.99,
     sku: 'MOU-001',
     stock: [
       {
-        warehouseId: 'ware1',
+        warehouseId: 'clp0000000000000000000001',
         warehouseName: 'New York',
         warehouseCity: 'New York',
         totalUnits: 500,
@@ -94,7 +94,7 @@ const mockProducts = [
         availableUnits: 400,
       },
       {
-        warehouseId: 'ware2',
+        warehouseId: 'clp0000000000000000000002',
         warehouseName: 'Los Angeles',
         warehouseCity: 'Los Angeles',
         totalUnits: 300,
@@ -102,7 +102,7 @@ const mockProducts = [
         availableUnits: 240,
       },
       {
-        warehouseId: 'ware3',
+        warehouseId: 'clp0000000000000000000003',
         warehouseName: 'Chicago',
         warehouseCity: 'Chicago',
         totalUnits: 250,
@@ -128,13 +128,13 @@ export async function GET() {
       });
 
       // Transform to show available stock per warehouse
-      const formattedProducts = products.map((product: any) => ({
+      const formattedProducts = products.map((product) => ({
         id: product.id,
         name: product.name,
         description: product.description,
         price: product.price,
         sku: product.sku,
-        stock: product.stock.map((s: any) => ({
+        stock: product.stock.map((s) => ({
           warehouseId: s.warehouseId,
           warehouseName: s.warehouse.name,
           warehouseCity: s.warehouse.city,
@@ -145,9 +145,10 @@ export async function GET() {
       }));
 
       return NextResponse.json(formattedProducts);
-    } catch (dbError: any) {
+    } catch (dbError: unknown) {
       // If database connection fails, use mock data for development
-      console.warn('Database connection failed, using mock data:', dbError.message);
+      const errorMessage = dbError instanceof Error ? dbError.message : 'Unknown error';
+      console.warn('Database connection failed, using mock data:', errorMessage);
       return NextResponse.json(mockProducts);
     }
   } catch (error) {

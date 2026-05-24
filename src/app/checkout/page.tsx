@@ -1,12 +1,11 @@
 'use client';
 
 import { Suspense } from 'react';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, CheckCircle, Clock, Loader2, ArrowLeft } from 'lucide-react';
 
@@ -16,6 +15,7 @@ interface Product {
   price: number;
   description: string | null;
   sku: string;
+  stock: WarehouseStock[];
 }
 
 interface Warehouse {
@@ -49,7 +49,7 @@ function CheckoutContent() {
   const searchParams = useSearchParams();
   const productId = searchParams.get('productId');
 
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -78,13 +78,16 @@ function CheckoutContent() {
     fetchProducts();
   }, []);
 
-  // Auto-select first available warehouse
+  // Auto-select first available warehouse when product data loads
+  // Guard clause prevents cascading renders - only updates when selectedWarehouse is empty
   useEffect(() => {
-    if (currentProduct?.stock && selectedWarehouse === '') {
-      const available = currentProduct.stock.find((s: WarehouseStock) => s.availableUnits > 0);
-      if (available) {
-        setSelectedWarehouse(available.warehouseId);
-      }
+    if (!currentProduct?.stock?.length || selectedWarehouse !== '') {
+      return;
+    }
+    
+    const available = currentProduct.stock.find((s: WarehouseStock) => s.availableUnits > 0);
+    if (available) {
+      setSelectedWarehouse(available.warehouseId);
     }
   }, [currentProduct, selectedWarehouse]);
 
@@ -233,20 +236,30 @@ function CheckoutContent() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center mb-6">
+            <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
+          </div>
+          <p className="text-slate-300 text-lg font-light">Loading products...</p>
+        </div>
       </div>
     );
   }
 
   if (!currentProduct) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex items-center justify-center">
-        <Card className="bg-slate-800/50 border-slate-700 w-full max-w-md">
-          <CardContent className="pt-6 text-center">
-            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <p className="text-slate-200 mb-4">Product not found</p>
-            <Link href="/">
-              <Button className="bg-blue-600 hover:bg-blue-700">Back to Store</Button>
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex items-center justify-center p-4 animate-fade-in-up">
+        <Card className="bg-slate-800/50 border-slate-700 w-full max-w-md backdrop-blur-sm">
+          <CardContent className="pt-8 text-center space-y-6">
+            <AlertCircle className="h-16 w-16 text-red-500 mx-auto" />
+            <div>
+              <p className="text-slate-200 font-semibold text-lg">Product Not Found</p>
+              <p className="text-slate-400 text-sm mt-2">The product you&apos;re looking for doesn&apos;t exist.</p>
+            </div>
+            <Link href="/" className="block">
+              <Button className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold py-3">
+                ← Back to Store
+              </Button>
             </Link>
           </CardContent>
         </Card>
@@ -255,32 +268,36 @@ function CheckoutContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800">
-      <div className="container mx-auto px-4 py-12 max-w-2xl">
-        <Link href="/" className="flex items-center gap-2 text-blue-400 hover:text-blue-300 mb-8">
-          <ArrowLeft className="h-4 w-4" />
-          Back to Store
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 overflow-hidden">
+      {/* Animated background elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-pulse-smooth"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl animate-pulse-smooth" style={{animationDelay: '1s'}}></div>
+      </div>
+
+      <div className="container mx-auto px-4 py-12 max-w-2xl relative z-10">
+        <Link href="/" className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 mb-8 transition-colors duration-300 group animate-fade-in-up">
+          <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
+          <span className="font-medium">Back to Store</span>
         </Link>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-8 animate-fade-in-up">
           {/* Product Summary */}
-          <Card className="md:col-span-1 bg-slate-800/50 border-slate-700 sticky top-4 h-fit">
+          <Card className="md:col-span-1 bg-slate-800/40 border-slate-700 sticky top-8 h-fit backdrop-blur-sm hover:border-blue-500/50 transition-all duration-300">
             <CardHeader>
-              <CardTitle className="text-blue-400">{currentProduct.name}</CardTitle>
+              <CardTitle className="text-blue-400 text-2xl">{currentProduct.name}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-5">
               <div>
-                <p className="text-sm text-slate-400">Price</p>
-                <p className="text-2xl font-bold text-green-400">
+                <p className="text-sm text-slate-400 mb-2 font-light">Price</p>
+                <p className="text-3xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
                   ${currentProduct.price.toFixed(2)}
                 </p>
               </div>
               {reservation && (
-                <div className="p-3 bg-blue-900/30 border border-blue-500/50 rounded-lg">
-                  <p className="text-sm text-slate-300 mb-2">
-                    <strong>Reservation ID:</strong>
-                  </p>
-                  <p className="text-xs text-slate-400 font-mono break-all">
+                <div className="p-4 bg-gradient-to-br from-blue-900/30 to-cyan-900/30 border border-blue-500/40 rounded-lg backdrop-blur-sm">
+                  <p className="text-xs text-slate-400 mb-2 font-medium tracking-wide">RESERVATION ID</p>
+                  <p className="text-xs text-slate-300 font-mono break-all leading-relaxed bg-slate-900/40 p-2 rounded">
                     {reservation.id}
                   </p>
                 </div>
@@ -289,46 +306,52 @@ function CheckoutContent() {
           </Card>
 
           {/* Reservation Form / Status */}
-          <Card className="md:col-span-2 bg-slate-800/50 border-slate-700">
+          <Card className="md:col-span-2 bg-slate-800/40 border-slate-700 backdrop-blur-sm hover:border-blue-500/50 transition-all duration-300">
             <CardHeader>
-              <CardTitle className="text-blue-400">
+              <CardTitle className="text-blue-400 text-2xl">
                 {reservation
                   ? reservation.status === 'CONFIRMED'
-                    ? 'Purchase Confirmed'
-                    : 'Complete Your Reservation'
-                  : 'Make a Reservation'}
+                    ? '✅ Purchase Confirmed'
+                    : '⏱️ Complete Your Reservation'
+                  : '🛒 Make a Reservation'}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               {error && (
-                <Alert className="bg-red-900/20 border-red-500/50">
-                  <AlertCircle className="h-4 w-4 text-red-500" />
-                  <AlertTitle className="text-red-200">Error</AlertTitle>
-                  <AlertDescription className="text-red-200">{error}</AlertDescription>
-                </Alert>
+                <div className="p-4 bg-red-900/20 border border-red-500/50 rounded-lg backdrop-blur-sm animate-fade-in-up">
+                  <div className="flex gap-3">
+                    <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-red-200">Error</p>
+                      <p className="text-red-200/90 text-sm mt-1">{error}</p>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {successMessage && (
-                <Alert className="bg-green-900/20 border-green-500/50">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <AlertTitle className="text-green-200">Success</AlertTitle>
-                  <AlertDescription className="text-green-200">
-                    {successMessage}
-                  </AlertDescription>
-                </Alert>
+                <div className="p-4 bg-green-900/20 border border-green-500/50 rounded-lg backdrop-blur-sm animate-fade-in-up">
+                  <div className="flex gap-3">
+                    <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-green-200">Success</p>
+                      <p className="text-green-200/90 text-sm mt-1">{successMessage}</p>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {!reservation ? (
                 <>
                   {/* Warehouse Selection */}
                   <div>
-                    <label className="text-sm font-medium text-slate-200 block mb-2">
+                    <label className="text-sm font-semibold text-slate-200 block mb-3">
                       Select Warehouse
                     </label>
                     <select
                       value={selectedWarehouse}
                       onChange={(e) => setSelectedWarehouse(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-slate-200 focus:outline-none focus:border-blue-500"
+                      className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300"
                     >
                       <option value="">Choose a warehouse...</option>
                       {currentProduct.stock.map((stock: WarehouseStock) => (
@@ -345,7 +368,7 @@ function CheckoutContent() {
 
                   {/* Quantity Selection */}
                   <div>
-                    <label className="text-sm font-medium text-slate-200 block mb-2">
+                    <label className="text-sm font-semibold text-slate-200 block mb-3">
                       Quantity
                     </label>
                     <input
@@ -354,37 +377,37 @@ function CheckoutContent() {
                       max={selectedWarehouseData?.availableUnits || 1}
                       value={quantity}
                       onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-slate-200 focus:outline-none focus:border-blue-500"
+                      className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300"
                     />
                     {selectedWarehouseData && (
-                      <p className="text-xs text-slate-400 mt-1">
-                        Max available: {selectedWarehouseData.availableUnits}
+                      <p className="text-xs text-slate-400 mt-2 font-light">
+                        Maximum available: <span className="text-green-400 font-semibold">{selectedWarehouseData.availableUnits} units</span>
                       </p>
                     )}
                   </div>
 
                   {/* Stock Info */}
                   {selectedWarehouseData && (
-                    <div className="p-3 bg-slate-900/50 border border-slate-700 rounded-lg">
-                      <p className="text-sm text-slate-300 mb-2">
-                        <strong>{selectedWarehouseData.warehouseName}</strong>
+                    <div className="p-4 bg-slate-900/40 border border-slate-700 rounded-lg space-y-3">
+                      <p className="text-sm font-semibold text-slate-200">
+                        📦 {selectedWarehouseData.warehouseName}
                       </p>
-                      <div className="grid grid-cols-3 gap-2 text-xs text-slate-400">
-                        <div>
-                          <p className="text-slate-500">Available</p>
-                          <p className="text-green-400 font-semibold">
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-700">
+                          <p className="text-xs text-slate-500 mb-1 font-light">Available</p>
+                          <p className="text-lg font-bold text-green-400">
                             {selectedWarehouseData.availableUnits}
                           </p>
                         </div>
-                        <div>
-                          <p className="text-slate-500">Reserved</p>
-                          <p className="text-yellow-400 font-semibold">
+                        <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-700">
+                          <p className="text-xs text-slate-500 mb-1 font-light">Reserved</p>
+                          <p className="text-lg font-bold text-yellow-400">
                             {selectedWarehouseData.reservedUnits}
                           </p>
                         </div>
-                        <div>
-                          <p className="text-slate-500">Total</p>
-                          <p className="text-blue-400 font-semibold">
+                        <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-700">
+                          <p className="text-xs text-slate-500 mb-1 font-light">Total</p>
+                          <p className="text-lg font-bold text-blue-400">
                             {selectedWarehouseData.totalUnits}
                           </p>
                         </div>
@@ -395,29 +418,29 @@ function CheckoutContent() {
                   <Button
                     onClick={handleMakeReservation}
                     disabled={!selectedWarehouse || quantity < 1 || submitting}
-                    className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold disabled:opacity-50"
+                    className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold py-3 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/50 active:scale-95 transform"
                   >
                     {submitting ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Creating...
+                        Reserving...
                       </>
                     ) : (
-                      'Make Reservation'
+                      '🎯 Make Reservation'
                     )}
                   </Button>
                 </>
               ) : (
                 <>
                   {/* Reservation Status */}
-                  <div className="p-4 bg-slate-900/50 border border-slate-700 rounded-lg">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-slate-300">Reservation Status:</span>
+                  <div className="p-4 bg-slate-900/40 border border-slate-700 rounded-lg space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-400 font-light">Status:</span>
                       <Badge
-                        className={`${
+                        className={`font-bold ${
                           reservation.status === 'CONFIRMED'
-                            ? 'bg-green-600'
-                            : 'bg-yellow-600'
+                            ? 'bg-green-600/80 text-white'
+                            : 'bg-yellow-600/80 text-white'
                         }`}
                       >
                         {reservation.status}
@@ -425,39 +448,39 @@ function CheckoutContent() {
                     </div>
 
                     {reservation.status === 'PENDING' && timeLeft !== null && (
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-yellow-500" />
-                        <span className="text-slate-300">Time remaining:</span>
-                        <span className={`font-semibold ${timeLeft < 60 ? 'text-red-500' : 'text-yellow-400'}`}>
+                      <div className="flex items-center gap-3 pt-3 border-t border-slate-700">
+                        <Clock className={`h-5 w-5 ${timeLeft < 60 ? 'text-red-500 animate-pulse' : 'text-yellow-500'}`} />
+                        <span className="text-slate-300 text-sm">Time remaining:</span>
+                        <span className={`font-mono font-bold text-lg ${timeLeft < 60 ? 'text-red-500 animate-pulse' : 'text-yellow-400'}`}>
                           {formatTime(timeLeft)}
                         </span>
                       </div>
                     )}
                   </div>
 
-                  <div className="p-4 bg-slate-900/50 border border-slate-700 rounded-lg">
+                  <div className="p-4 bg-slate-900/40 border border-slate-700 rounded-lg space-y-3">
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p className="text-slate-500">Quantity</p>
-                        <p className="text-slate-200 font-semibold">
+                        <p className="text-slate-500 text-xs font-light mb-1">Quantity</p>
+                        <p className="text-slate-200 font-bold text-lg">
                           {reservation.quantity}
                         </p>
                       </div>
                       <div>
-                        <p className="text-slate-500">Warehouse</p>
-                        <p className="text-slate-200 font-semibold">
+                        <p className="text-slate-500 text-xs font-light mb-1">Warehouse</p>
+                        <p className="text-slate-200 font-bold text-lg">
                           {reservation.warehouse.name}
                         </p>
                       </div>
                       <div>
-                        <p className="text-slate-500">Product</p>
-                        <p className="text-slate-200 font-semibold">
+                        <p className="text-slate-500 text-xs font-light mb-1">Product</p>
+                        <p className="text-slate-200 font-bold text-lg">
                           {reservation.product.name}
                         </p>
                       </div>
                       <div>
-                        <p className="text-slate-500">Total Price</p>
-                        <p className="text-green-400 font-semibold">
+                        <p className="text-slate-500 text-xs font-light mb-1">Total Price</p>
+                        <p className="text-green-400 font-bold text-lg">
                           ${(reservation.quantity * currentProduct.price).toFixed(2)}
                         </p>
                       </div>
@@ -469,7 +492,7 @@ function CheckoutContent() {
                       <Button
                         onClick={handleConfirmReservation}
                         disabled={submitting}
-                        className="bg-green-600 hover:bg-green-700 text-white font-semibold"
+                        className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold py-3 rounded-lg transition-all duration-300 hover:shadow-lg hover:shadow-green-500/50 active:scale-95 transform disabled:opacity-40"
                       >
                         {submitting ? (
                           <>
@@ -477,13 +500,13 @@ function CheckoutContent() {
                             Confirming...
                           </>
                         ) : (
-                          'Confirm Purchase'
+                          '✅ Confirm Purchase'
                         )}
                       </Button>
                       <Button
                         onClick={handleCancelReservation}
                         disabled={submitting}
-                        className="border border-slate-600 bg-transparent text-slate-200 hover:bg-slate-700"
+                        className="border border-slate-600 bg-slate-900/40 hover:bg-slate-800 text-slate-200 hover:text-slate-100 font-bold py-3 rounded-lg transition-all duration-300 active:scale-95 transform disabled:opacity-40"
                       >
                         {submitting ? (
                           <>
@@ -491,16 +514,16 @@ function CheckoutContent() {
                             Cancelling...
                           </>
                         ) : (
-                          'Cancel'
+                          '✕ Cancel'
                         )}
                       </Button>
                     </div>
                   )}
 
                   {reservation.status === 'CONFIRMED' && (
-                    <Link href="/">
-                      <Button className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold">
-                        Return to Store
+                    <Link href="/" className="block">
+                      <Button className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold py-3 rounded-lg transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/50">
+                        ← Return to Store
                       </Button>
                     </Link>
                   )}

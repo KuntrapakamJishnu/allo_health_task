@@ -10,8 +10,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const reservation = await ReservationService.getReservation(id);
     return NextResponse.json(reservation);
-  } catch (error: any) {
-    if (error.message === 'RESERVATION_NOT_FOUND') {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '';
+    if (errorMessage === 'RESERVATION_NOT_FOUND') {
       return NextResponse.json(
         { error: 'Reservation not found' },
         { status: 404 }
