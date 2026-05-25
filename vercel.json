@@ -6,7 +6,7 @@
   "crons": [
     {
       "path": "/api/cron/release-expired",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
